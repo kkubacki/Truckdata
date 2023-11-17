@@ -1,5 +1,5 @@
-using ErpSystem.TruckData.Contracts;
-using ErpSystem.TruckData.Domain.Entities;
+﻿using ErpSystem.TruckData.Contracts;
+using ErpSystem.TruckData.WebApi.RequestModels;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ErpSystem.TruckData.WebApi.Controllers
@@ -8,69 +8,105 @@ namespace ErpSystem.TruckData.WebApi.Controllers
     [ApiController]
     public class TrucksController : ControllerBase
     {
-        private readonly ITruckRepository _repository;
+        private readonly ITruckApplicationService _truckApplicationService;
 
-        public TrucksController(ITruckRepository repository)
+        public TrucksController(ITruckApplicationService truckApplicationService)
         {
-            _repository = repository;
+            _truckApplicationService = truckApplicationService;
         }
 
-        // GET: api/trucks
-        [HttpGet]
-        public IEnumerable<Truck> GetTrucks()
-        {
-            return _repository.GetAll();
-        }
 
-        // GET: api/trucks/{id}
         [HttpGet("{id}")]
-        public ActionResult<Truck> GetTruck(Guid id)
+        public async Task<ActionResult<OperationResultDto<TruckDto>>> GetTruck(Guid id)
         {
-            var truck = _repository.GetById(id);
-            if (truck == null)
+            var result = await _truckApplicationService.GetTruckById(id);
+            if (result.Data == null)
             {
                 return NotFound();
             }
 
-            return truck;
+            return result;
         }
 
-        // POST: api/trucks
         [HttpPost]
-        public ActionResult<Truck> PostTruck(Truck truck)
-        {
-            _repository.Add(truck);
-            return CreatedAtAction(nameof(GetTruck), new { id = truck.Id }, truck);
-        }
+        [ProducesResponseType(typeof(TruckDto), 201)]
+        [ProducesResponseType(typeof(IEnumerable<string>), 400)]
 
-        // PUT: api/trucks/{id}
-        [HttpPut("{id}")]
-        public IActionResult PutTruck(Truck updatedTruck)
+        public async Task<ActionResult<OperationResultDto<TruckDto>>> PostTruck([FromBody] SaveTruckRequestModel request)
         {
-            var existingTruck = _repository.GetById(updatedTruck.Id);
-            if (existingTruck == null)
+            var truckDto = MapToDto(request);
+
+            var result = await _truckApplicationService.AddTruck(truckDto);
+
+            if (result.IsSuccess)
             {
-                return NotFound();
-            }            
-
-            _repository.Update(existingTruck);
-
-            return NoContent();
-        }
-
-        // DELETE: api/trucks/{id}
-        [HttpDelete("{id}")]
-        public IActionResult DeleteTruck(Guid id)
-        {
-            var truck = _repository.GetById(id);
-            if (truck == null)
-            {
-                return NotFound();
+                return CreatedAtAction(nameof(GetTruck), new { id = truckDto.Id }, truckDto);
             }
 
-            _repository.Delete(id);
+            return BadRequest(result.Errors);
+        }
 
-            return NoContent();
+        [HttpPut]
+        [ProducesResponseType(typeof(TruckDto), 200)]
+        [ProducesResponseType(typeof(IEnumerable<string>), 400)]
+
+        public async Task<ActionResult<OperationResultDto<TruckDto>>> PutTruck(Guid id,[FromBody] SaveTruckRequestModel request)
+        {
+            var truckDto = MapToDto(id, request);
+
+            var result = await _truckApplicationService.UpdateTruck(truckDto);
+
+            if (!result.Errors.Any())
+            {
+                return Ok(truckDto);
+            }
+
+            return BadRequest(result.Errors);
+        }
+
+        [HttpGet]
+        [ProducesResponseType(typeof(IEnumerable<TruckDto>), 200)]
+        [ProducesResponseType(typeof(IEnumerable<string>), 400)]
+        public async Task<IActionResult> GetTruck([FromQuery] TruckQuery truckQuery)
+        {
+            var result = await _truckApplicationService.GetTrucksAsync(truckQuery);
+
+            if (result.IsSuccess)
+            {
+                return Ok(result.Data);
+            }
+
+            return BadRequest(result.Errors);
+        }
+
+        [HttpDelete("{id}")]
+        [ProducesResponseType(typeof(TruckDto), 200)]
+        [ProducesResponseType(typeof(IEnumerable<string>), 400)]
+        public async Task<IActionResult> DeleteTruck(Guid id)
+        {
+            var result = await _truckApplicationService.Delete(id);
+
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result.Errors);
+            }
+
+           
+            return Ok(result.Data);
+        }
+
+        private static TruckDto MapToDto(Guid truckId,SaveTruckRequestModel request)
+        {
+            var truckDto = new TruckDto(truckId,request.Code, request.Name, request.Status, request.Description);
+
+            return truckDto;
+        }
+
+        private static TruckDto MapToDto(SaveTruckRequestModel request)
+        {
+            var truckDto = new TruckDto(request.Code, request.Name, request.Status, request.Description);
+
+            return truckDto;
         }
     }
 }

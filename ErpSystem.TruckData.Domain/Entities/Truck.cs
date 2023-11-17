@@ -1,4 +1,5 @@
 ﻿using ErpSystem.TruckData.Domain.Enums;
+using ErpSystem.TruckData.Domain.Services;
 
 namespace ErpSystem.TruckData.Domain.Entities
 {
@@ -21,20 +22,35 @@ namespace ErpSystem.TruckData.Domain.Entities
             Description = description;
         }
 
+        public Truck(Guid id,string code, string name, TruckStatus status, string description = "")
+        {
+            Id = id;
+            ValidateCode(code);
+            ValidateName(name);
+            Code = code;
+            Name = name;
+            Status = status;
+            Description = description;
+        }
+
         public void Update(Truck newValues)
         {
             ValidateCode(newValues.Code);
             ValidateName(newValues.Name);
-            ChangeStatus(newValues.Status);
-            Code = Code;
-            Name = Name;
-            Status = newValues.Status;
+
+            if (Status != newValues.Status)
+            {
+                ChangeStatus(newValues.Status);
+            }
+            
+            Code = newValues.Code;
+            Name = newValues.Name;
             Description = newValues.Description;
         }
 
         public void ChangeStatus(TruckStatus newStatus)
         {           
-            if (IsValidStatusTransition(Status, newStatus))
+             if (IsValidStatusTransition(Status, newStatus))
             {
                 Status = newStatus;
             }
@@ -46,23 +62,18 @@ namespace ErpSystem.TruckData.Domain.Entities
 
         private void ValidateName(string name)
         {
-            if (string.IsNullOrWhiteSpace(name))
+            if (!TruckValidationService.ValidateName(name))
             {
-                throw new ArgumentException("Name cannot be null, empty, or whitespace.");
+                throw new ArgumentException(TruckValidationService.NameErrorMessage);
             }
         }
 
         private void ValidateCode(string code)
         {
-            if (!IsAlphaNumeric(code))
+            if (!TruckValidationService.ValidateCode(code))
             {
-                throw new ArgumentException("Code must be alphanumeric.");
+                throw new ArgumentException(TruckValidationService.CodeErrorMessage);
             }
-        }
-
-        private bool IsAlphaNumeric(string input)
-        {
-            return !string.IsNullOrEmpty(input) && input.All(char.IsLetterOrDigit);
         }
 
         private bool IsValidStatusTransition(TruckStatus currentStatus, TruckStatus newStatus)
