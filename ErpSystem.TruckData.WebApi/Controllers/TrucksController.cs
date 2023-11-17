@@ -17,15 +17,17 @@ namespace ErpSystem.TruckData.WebApi.Controllers
 
 
         [HttpGet("{id}")]
+        [ProducesResponseType(typeof(TruckDto), 200)]
+        [ProducesResponseType(typeof(IEnumerable<string>), 404)]
         public async Task<ActionResult<OperationResultDto<TruckDto>>> GetTruck(Guid id)
         {
             var result = await _truckApplicationService.GetTruckById(id);
-            if (result.Data == null)
+            if (!result.IsSuccess)
             {
-                return NotFound();
+                return NotFound(result.Errors);
             }
 
-            return result;
+            return Ok(result.Data);
         }
 
         [HttpPost]

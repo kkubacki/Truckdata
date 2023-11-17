@@ -60,6 +60,16 @@ namespace ErpSystem.TruckData.Application
             try
             {
                 var truckEntity = await _truckRepository.GetByIdAsync(truckId);
+
+                if (truckEntity == null)
+                {
+                    result.IsSuccess = false;
+
+                    result.Errors.Add($"Truck with Id {truckId} not found");
+
+                    return result;
+                }
+
                 var truckDto = TruckMapper.MapFromTruck(truckEntity);
 
                 result.Data = truckDto;
@@ -71,7 +81,7 @@ namespace ErpSystem.TruckData.Application
             catch (Exception ex)
             {
                 result.IsSuccess = false;
-                result.Errors = new List<string>() { $"Failed to Get Truck by Id ,ex message {ex.Message}" };
+                result.Errors.Add($"Failed to Get Truck by Id ,ex message {ex.Message}");
 
                 return result;
             }
